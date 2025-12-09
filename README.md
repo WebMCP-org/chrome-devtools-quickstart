@@ -2,6 +2,10 @@
 
 > Let AI agents interact with your website through Chrome DevTools Protocol + WebMCP tools.
 
+**Up to 89% fewer tokens** compared to screenshot-based workflows. [See benchmarks](#token-usage-benchmarks).
+
+![Benchmark Results](./assets/benchmark.png)
+
 ![Demo](./assets/image.png)
 
 **What this does:** AI agents (Claude Code, Cursor, etc.) can navigate to your website, discover your tools via `list_webmcp_tools`, and call them via `call_webmcp_tool`.
@@ -211,6 +215,53 @@ Besides Chrome DevTools MCP, you can call WebMCP tools directly from the browser
 |--------|-------------|------|
 | **MCP-B Extension** | Browser extension that collects tools from all open tabs | [Chrome Web Store](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblnikhdhfa) |
 | **Embedded Agent** | Drop-in AI assistant for your website | [Docs](https://docs.mcp-b.ai/calling-tools/embedded-agent) |
+
+---
+
+## Token Usage Benchmarks
+
+WebMCP tools use **up to 89% fewer tokens** than screenshot-based approaches. We measured real Claude API token usage for identical tasks:
+
+![Benchmark Comparison](./assets/benchmark.png)
+
+### Simple Task: Set Counter to 42
+
+| Approach | Total Tokens | Screenshots | Cost |
+|----------|--------------|-------------|------|
+| Screenshot-based | 3,801 | 2 | $0.015 |
+| **WebMCP tools** | **433** | 0 | $0.003 |
+| **Reduction** | **89%** | - | **83%** |
+
+### Complex Task: Create Calendar Event (Multi-step)
+
+| Approach | Total Tokens | Screenshots | WebMCP Calls | Cost |
+|----------|--------------|-------------|--------------|------|
+| Screenshot-based | 11,390 | 4 | 0 | $0.048 |
+| **WebMCP tools** | **2,583** | 0 | 6 | $0.012 |
+| **Reduction** | **77%** | - | - | **76%** |
+
+### Why WebMCP is More Efficient
+
+- **Screenshots are expensive**: Each image costs ~2,000 tokens at 1512x982 viewport (calculated as `width × height / 750`)
+- **Tool responses are compact**: JSON responses typically use 20-100 tokens
+- **No verification screenshots needed**: Tool responses confirm success directly
+- **Simple tasks benefit most**: Direct tool access eliminates visual parsing overhead
+
+### Run the Benchmarks Yourself
+
+```bash
+# Add your API key to .env
+echo "ANTHROPIC_API_KEY=your-key" > .env
+
+# Install dependencies
+npm install
+
+# Run simple benchmark (counter app - starts dev server automatically)
+npm run benchmark:simple:direct
+
+# Run complex benchmark (calendar app - uses live deployment)
+npm run benchmark:complex:direct
+```
 
 ---
 
