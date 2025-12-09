@@ -1,7 +1,6 @@
 import './style.css'
-//needs to be first!!
+// @mcp-b/global must be imported first!
 import '@mcp-b/global';
-import '@mcp-b/embedded-agent/web-component';
 import javascriptLogo from './javascript.svg'
 import viteLogo from '/vite.svg'
 import { setupCounter } from './counter.js'
@@ -22,10 +21,6 @@ document.querySelector('#app').innerHTML = `
     <p class="read-the-docs">
       Click on the Vite logo to learn more
     </p>
-      <webmcp-agent
-    app-id="still need to finish this part!"
-    view-mode="pill"
-  />
   </div>
 `
 

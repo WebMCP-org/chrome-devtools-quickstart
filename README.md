@@ -25,7 +25,7 @@ claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
 
 **Optional:** Add the [WebMCP docs server](https://docs.mcp-b.ai/mcp-integration) so your AI knows how to build tools:
 ```bash
-claude mcp add webmcp-docs --url https://docs.mcp-b.ai/mcp
+claude mcp add --transport http webmcp-docs https://docs.mcp-b.ai/mcp
 ```
 
 <details>
