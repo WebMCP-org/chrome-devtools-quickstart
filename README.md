@@ -1,10 +1,10 @@
 # Chrome DevTools MCP Quickstart
 
+![Benchmark Comparison](./assets/benchmark.png)
+
 > Let AI agents interact with your website through Chrome DevTools Protocol + WebMCP tools.
 
-**Up to 89% fewer tokens** compared to screenshot-based workflows. [See benchmarks](#token-usage-benchmarks).
-
-![Benchmark Results](./assets/benchmark.png)
+**Up to 89% fewer tokens** compared to screenshot-based workflows. [→ See detailed benchmarks](#token-usage-benchmarks)
 
 ![Demo](./assets/image.png)
 
