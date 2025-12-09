@@ -2,7 +2,7 @@
 
 > Let AI agents interact with your website through Chrome DevTools Protocol + WebMCP tools.
 
-![Demo](./assets/demo.png)
+![Demo](./assets/image.png)
 
 **What this does:** AI agents (Claude Code, Cursor, etc.) can navigate to your website, discover your tools via `list_webmcp_tools`, and call them via `call_webmcp_tool`.
 
@@ -23,6 +23,11 @@ npm install && npm run dev
 claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
 ```
 
+**Optional:** Add the [WebMCP docs server](https://docs.mcp-b.ai/mcp-integration) so your AI knows how to build tools:
+```bash
+claude mcp add webmcp-docs --url https://docs.mcp-b.ai/mcp
+```
+
 <details>
 <summary>Cursor, Claude Desktop, Windsurf, Other Clients</summary>
 
@@ -33,6 +38,9 @@ claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
     "chrome-devtools": {
       "command": "npx",
       "args": ["@mcp-b/chrome-devtools-mcp@latest"]
+    },
+    "webmcp-docs": {
+      "url": "https://docs.mcp-b.ai/mcp"
     }
   }
 }
@@ -45,6 +53,9 @@ claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
     "chrome-devtools": {
       "command": "npx",
       "args": ["@mcp-b/chrome-devtools-mcp@latest"]
+    },
+    "webmcp-docs": {
+      "url": "https://docs.mcp-b.ai/mcp"
     }
   }
 }
@@ -57,6 +68,10 @@ claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
     "chrome-devtools": {
       "command": "npx",
       "args": ["@mcp-b/chrome-devtools-mcp@latest"]
+    },
+    "webmcp-docs": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://docs.mcp-b.ai/mcp"]
     }
   }
 }
@@ -78,13 +93,14 @@ The AI will navigate to your page, discover the tools, and execute them:
 
 ## How It Works
 
-```
-AI Client ──▶ Chrome DevTools MCP ──▶ Your Website
-              (via CDP)               (with @mcp-b/global)
-                   │
-                   ▼
-           list_webmcp_tools()  →  Discovers: get_counter, set_counter, etc.
-           call_webmcp_tool()   →  Executes tool, returns result
+```mermaid
+flowchart LR
+    A[AI Client] --> B[Chrome DevTools MCP]
+    B -->|CDP| C[Your Website]
+    C -->|@mcp-b/global| D[navigator.modelContext]
+
+    B -.->|list_webmcp_tools| E[Discovers tools]
+    B -.->|call_webmcp_tool| F[Executes tools]
 ```
 
 1. Your website loads [`@mcp-b/global`](https://www.npmjs.com/package/@mcp-b/global) which adds `navigator.modelContext`
@@ -152,28 +168,14 @@ navigator.modelContext.registerTool({
 
 The real power: AI can write tools, test them, and iterate—all in one session.
 
-```
-┌─────────────────┐
-│ AI writes tool  │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│ Vite hot-reloads│
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│ AI navigates    │
-│ to page         │
-└────────┬────────┘
-         ▼
-┌─────────────────┐     ┌─────────────────┐
-│ AI tests tool   │────▶│ Works? ──No───┐ │
-└─────────────────┘     └───────┬────────┘ │
-                                │ Yes      │
-                                ▼          │
-                        ┌───────────┐      │
-                        │   Done!   │◀─────┘
-                        └───────────┘
+```mermaid
+flowchart TD
+    A[AI writes tool] --> B[Vite hot-reloads]
+    B --> C[AI navigates to page]
+    C --> D[AI tests tool]
+    D --> E{Works?}
+    E -->|No| A
+    E -->|Yes| F[Done!]
 ```
 
 **Try it:**
@@ -195,15 +197,14 @@ Chrome DevTools MCP includes 28+ browser automation tools:
 
 ---
 
-## Alternative: MCP-B Extension
+## Other Ways to Call WebMCP Tools
 
-For **production websites** (not local dev), use the [MCP-B Extension](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblnikhdhfa):
+Besides Chrome DevTools MCP, you can call WebMCP tools directly from the browser:
 
-1. Install from Chrome Web Store
-2. Set up [Native Host](https://docs.mcp-b.ai/native-host-setup) for Claude Desktop/Claude Code
-3. Tools are auto-discovered on any page
-
-Better for: production testing, aggregating tools from multiple tabs, no MCP server needed.
+| Option | Description | Link |
+|--------|-------------|------|
+| **MCP-B Extension** | Browser extension that collects tools from all open tabs | [Chrome Web Store](https://chromewebstore.google.com/detail/mcp-b-extension/daohopfhkdelnpemnhlekblnikhdhfa) |
+| **Embedded Agent** | Drop-in AI assistant for your website | [Docs](https://docs.mcp-b.ai/calling-tools/embedded-agent) |
 
 ---
 
@@ -232,10 +233,15 @@ Better for: production testing, aggregating tools from multiple tabs, no MCP ser
 
 ---
 
-## License
+## Credits
 
-MIT
+This quickstart uses [@mcp-b/chrome-devtools-mcp](https://www.npmjs.com/package/@mcp-b/chrome-devtools-mcp), a fork of [ChromeDevTools/chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) by Google LLC and the ChromeDevTools team. The fork adds WebMCP integration for connecting to website-registered MCP tools.
+
+- **npm package**: [@mcp-b/chrome-devtools-mcp](https://www.npmjs.com/package/@mcp-b/chrome-devtools-mcp)
+- **Source**: [WebMCP-org/npm-packages](https://github.com/WebMCP-org/npm-packages)
 
 ---
 
-Built with [WebMCP](https://docs.mcp-b.ai) and [@mcp-b/chrome-devtools-mcp](https://www.npmjs.com/package/@mcp-b/chrome-devtools-mcp)
+## License
+
+MIT
