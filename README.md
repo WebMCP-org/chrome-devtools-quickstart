@@ -109,7 +109,7 @@ flowchart LR
 
 1. Your website loads [`@mcp-b/global`](https://www.npmjs.com/package/@mcp-b/global) which adds `navigator.modelContext`
 2. You register tools using `navigator.modelContext.registerTool()`
-3. Chrome DevTools MCP connects to Chrome and exposes `list_webmcp_tools` + `call_webmcp_tool`
+3. [Chrome DevTools MCP](https://docs.mcp-b.ai/packages/chrome-devtools-mcp) connects to Chrome and exposes `list_webmcp_tools` + `call_webmcp_tool`
 4. AI agents discover and call your tools
 
 **To use in your own project:**
