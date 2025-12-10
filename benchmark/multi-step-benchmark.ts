@@ -1,22 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * Multi-Step Benchmark: Screenshots vs WebMCP Tools (Agent SDK Version)
+ * Multi-Step Benchmark: Chrome DevTools vs WebMCP vs Playwright (Agent SDK Version)
  *
- * A realistic benchmark comparing token consumption between screenshot-based
- * and WebMCP tool-based browser automation for complex, multi-step tasks.
- *
- * **Key differences from deprecated version**:
- * - Uses Claude Agent SDK for realistic agentic behavior
- * - Agent naturally decides how to solve the task (not scripted)
- * - Runs each approach 3 times and averages results
- * - Same MCP server for both, difference is tool availability
- *
- * **Task**: Create a calendar event on a complex calendar app with WebMCP tools.
+ * A realistic benchmark comparing token consumption between three different
+ * browser automation approaches for complex, multi-step tasks.
  *
  * **Approaches compared**:
- * 1. **Screenshot-based**: WebMCP tools blocked, must use screenshots/snapshots
- * 2. **WebMCP tool-based**: Can use list_webmcp_tools and call_webmcp_tool
+ * 1. **Chrome DevTools (Screenshot)**: Uses the official Google Chrome DevTools MCP server
+ *    with screenshot-based visual inspection
+ * 2. **WebMCP Tools**: Uses the @mcp-b/chrome-devtools-mcp fork with semantic WebMCP tools
+ * 3. **Playwright**: Uses Microsoft's @playwright/mcp server with accessibility tree
+ *
+ * **Task**: Create a calendar event on a complex calendar app.
  *
  * @example
  * ```bash
@@ -25,7 +21,7 @@
  * ```
  *
  * @requires ANTHROPIC_API_KEY - In .env file or environment variable
- * @requires Chrome browser - For browser automation
+ * @requires Chrome browser - For Chrome DevTools approaches
  *
  * @module benchmark/multi-step-benchmark
  */
@@ -38,8 +34,8 @@ import {
   cli,
   aggregateBenchmarkResults,
   printAgentApproachResults,
-  printAgentComparisonResults,
-  printAgentCostAnalysis,
+  printThreeWayComparisonResults,
+  printThreeWayCostAnalysis,
   calculateImageTokensFromBase64,
   ImageMimeType,
 } from "./helpers.js";
@@ -66,14 +62,39 @@ const TASK = `Navigate to ${CALENDAR_URL}, explore the calendar application, and
 
 After creating the event, verify it appears on the calendar.`;
 
-const MCP_SERVER_CONFIG = {
-  "chrome-devtools": {
-    command: "npx",
-    args: ["-y", "@mcp-b/chrome-devtools-mcp@latest"],
+/**
+ * MCP Server configurations for each approach.
+ *
+ * - Chrome DevTools: Official Google Chrome DevTools MCP server (screenshot-based)
+ * - WebMCP: Fork with semantic WebMCP tool support
+ * - Playwright: Microsoft's official Playwright MCP server (accessibility tree-based)
+ */
+const MCP_SERVERS = {
+  chromeDevTools: {
+    "chrome-devtools": {
+      command: "npx",
+      args: ["-y", "chrome-devtools-mcp@latest", "--headless"],
+    },
+  },
+  webmcp: {
+    "chrome-devtools": {
+      command: "npx",
+      args: ["-y", "@mcp-b/chrome-devtools-mcp@latest", "--headless"],
+    },
+  },
+  playwright: {
+    playwright: {
+      command: "npx",
+      args: ["-y", "@playwright/mcp@latest", "--headless"],
+    },
   },
 };
 
-const SCREENSHOT_SYSTEM_PROMPT = `You are a browser automation agent.
+/**
+ * System prompts tailored for each approach.
+ */
+const SYSTEM_PROMPTS = {
+  chromeDevTools: `You are a browser automation agent using Chrome DevTools.
 
 IMPORTANT: You MUST use take_screenshot to visually inspect the page. Do NOT rely solely on take_snapshot (DOM snapshots). Take actual screenshots to see what's on screen, analyze the visual layout, and verify your actions.
 
@@ -86,9 +107,9 @@ For complex multi-step tasks like creating calendar events:
 6. Take a SCREENSHOT after each major action to verify
 7. Take a final SCREENSHOT to confirm the event was created
 
-Always take screenshots before and after important actions.`;
+Always take screenshots before and after important actions.`,
 
-const WEBMCP_SYSTEM_PROMPT = `You are a browser automation agent. The page you're testing has WebMCP tools available that expose semantic APIs for the application's functionality.
+  webmcp: `You are a browser automation agent. The page you're testing has WebMCP tools available that expose semantic APIs for the application's functionality.
 
 IMPORTANT: Prioritize using WebMCP tools (via list_webmcp_tools and call_webmcp_tool) over taking screenshots. Only use screenshots if WebMCP tools are unavailable or you need visual verification. WebMCP tools provide direct programmatic access to the application's state and actions.
 
@@ -97,7 +118,28 @@ For calendar applications, look for tools like:
 - get_users - to see available users
 - get_event_colors - to see color options
 - create_event - to create new events
-- get_events - to verify creation`;
+- get_events - to verify creation
+
+Typical workflow:
+1. Navigate to the page
+2. List available WebMCP tools to discover the API
+3. Use call_webmcp_tool to interact with the app semantically
+4. Verify using WebMCP tools or minimal screenshots`,
+
+  playwright: `You are a browser automation agent using Playwright.
+
+Use Playwright's browser automation tools to interact with the page. The tools work with an accessibility tree (not screenshots), making interactions fast and reliable.
+
+For complex multi-step tasks like creating calendar events:
+1. Navigate to the page using browser_navigate
+2. Use browser_snapshot to get the accessibility tree and understand the UI
+3. Interact with elements using browser_click, browser_type, browser_select_option, etc.
+4. Fill forms step by step
+5. Use browser_snapshot to verify after each major action
+6. Confirm the event was created
+
+Prefer using the accessibility tree over screenshots for efficiency.`,
+};
 
 // ============================================================
 // Types
@@ -203,26 +245,30 @@ async function runAgentBenchmark(options: BenchmarkOptions): Promise<BenchmarkRe
 }
 
 // ============================================================
-// Benchmark Functions
+// Benchmark Functions for Each Approach
 // ============================================================
 
-async function runScreenshotBenchmark(): Promise<BenchmarkResult> {
+async function runChromeDevToolsBenchmark(): Promise<BenchmarkResult> {
   return runAgentBenchmark({
     task: TASK,
-    systemPrompt: SCREENSHOT_SYSTEM_PROMPT,
-    mcpServers: MCP_SERVER_CONFIG,
-    disallowedTools: [
-      "mcp__chrome-devtools__list_webmcp_tools",
-      "mcp__chrome-devtools__call_webmcp_tool",
-    ],
+    systemPrompt: SYSTEM_PROMPTS.chromeDevTools,
+    mcpServers: MCP_SERVERS.chromeDevTools,
   });
 }
 
 async function runWebMCPBenchmark(): Promise<BenchmarkResult> {
   return runAgentBenchmark({
     task: TASK,
-    systemPrompt: WEBMCP_SYSTEM_PROMPT,
-    mcpServers: MCP_SERVER_CONFIG,
+    systemPrompt: SYSTEM_PROMPTS.webmcp,
+    mcpServers: MCP_SERVERS.webmcp,
+  });
+}
+
+async function runPlaywrightBenchmark(): Promise<BenchmarkResult> {
+  return runAgentBenchmark({
+    task: TASK,
+    systemPrompt: SYSTEM_PROMPTS.playwright,
+    mcpServers: MCP_SERVERS.playwright,
   });
 }
 
@@ -231,31 +277,37 @@ async function runWebMCPBenchmark(): Promise<BenchmarkResult> {
 // ============================================================
 
 async function main(): Promise<void> {
-  cli.header("Multi-Step Benchmark: Screenshots vs WebMCP Tools\nAgent SDK Version");
+  cli.header("Multi-Step Benchmark: Chrome DevTools vs WebMCP vs Playwright\nAgent SDK Version");
 
   cli.info(`Calendar URL: ${CALENDAR_URL}`);
   cli.info(`Runs per approach: ${NUM_RUNS}`);
   cli.info("Using Claude Agent SDK for realistic agentic behavior");
-  cli.info("Screenshot approach: WebMCP tools blocked");
-  cli.info("WebMCP approach: All tools available, prefers semantic tools");
+  cli.info("");
+  cli.info("Approaches:");
+  cli.info("  1. Chrome DevTools (chrome-devtools-mcp) - Screenshot-based");
+  cli.info("  2. WebMCP (@mcp-b/chrome-devtools-mcp) - Semantic tool-based");
+  cli.info("  3. Playwright (@playwright/mcp) - Accessibility tree-based");
 
-  const screenshotResults: BenchmarkResult[] = [];
+  const chromeDevToolsResults: BenchmarkResult[] = [];
   const webmcpResults: BenchmarkResult[] = [];
+  const playwrightResults: BenchmarkResult[] = [];
 
   for (let i = 0; i < NUM_RUNS; i++) {
     cli.section(`RUN ${i + 1}/${NUM_RUNS}`);
 
-    cli.info("Running Screenshot approach...");
-    const screenshotResult = await runScreenshotBenchmark();
-    screenshotResults.push(screenshotResult);
-    if (screenshotResult.success) {
+    // Chrome DevTools approach
+    cli.info("Running Chrome DevTools approach...");
+    const chromeResult = await runChromeDevToolsBenchmark();
+    chromeDevToolsResults.push(chromeResult);
+    if (chromeResult.success) {
       cli.success(
-        `Completed: ${screenshotResult.inputTokens.toLocaleString()} in / ${screenshotResult.outputTokens.toLocaleString()} out, $${screenshotResult.totalCostUsd.toFixed(4)}`
+        `Completed: ${chromeResult.inputTokens.toLocaleString()} in / ${chromeResult.outputTokens.toLocaleString()} out, $${chromeResult.totalCostUsd.toFixed(4)}`
       );
     } else {
       cli.error("Failed");
     }
 
+    // WebMCP approach
     cli.info("Running WebMCP approach...");
     const webmcpResult = await runWebMCPBenchmark();
     webmcpResults.push(webmcpResult);
@@ -266,19 +318,41 @@ async function main(): Promise<void> {
     } else {
       cli.error("Failed");
     }
+
+    // Playwright approach
+    cli.info("Running Playwright approach...");
+    const playwrightResult = await runPlaywrightBenchmark();
+    playwrightResults.push(playwrightResult);
+    if (playwrightResult.success) {
+      cli.success(
+        `Completed: ${playwrightResult.inputTokens.toLocaleString()} in / ${playwrightResult.outputTokens.toLocaleString()} out, $${playwrightResult.totalCostUsd.toFixed(4)}`
+      );
+    } else {
+      cli.error("Failed");
+    }
   }
 
-  const screenshotAgg = aggregateBenchmarkResults("Screenshot", screenshotResults);
+  // Aggregate results
+  const chromeDevToolsAgg = aggregateBenchmarkResults("Chrome DevTools", chromeDevToolsResults);
   const webmcpAgg = aggregateBenchmarkResults("WebMCP", webmcpResults);
+  const playwrightAgg = aggregateBenchmarkResults("Playwright", playwrightResults);
 
-  cli.section("SCREENSHOT APPROACH RESULTS");
-  printAgentApproachResults(screenshotAgg);
+  // Print individual results
+  cli.section("CHROME DEVTOOLS APPROACH RESULTS");
+  printAgentApproachResults(chromeDevToolsAgg);
 
   cli.section("WEBMCP APPROACH RESULTS");
   printAgentApproachResults(webmcpAgg);
 
-  printAgentComparisonResults(screenshotAgg, webmcpAgg, "FINAL COMPARISON");
-  printAgentCostAnalysis(screenshotAgg, webmcpAgg);
+  cli.section("PLAYWRIGHT APPROACH RESULTS");
+  printAgentApproachResults(playwrightAgg);
+
+  // Print comparison (Chrome DevTools as baseline)
+  printThreeWayComparisonResults(
+    [chromeDevToolsAgg, webmcpAgg, playwrightAgg],
+    "FINAL COMPARISON"
+  );
+  printThreeWayCostAnalysis([chromeDevToolsAgg, webmcpAgg, playwrightAgg]);
 
   cli.success("Benchmark complete");
 }

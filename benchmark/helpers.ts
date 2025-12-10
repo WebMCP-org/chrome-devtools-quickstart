@@ -1044,3 +1044,176 @@ export function printAgentCostAnalysis(
   );
   console.log();
 }
+
+/**
+ * Prints a comparison table for three approaches (Agent SDK version).
+ *
+ * @param results - Array of three aggregated results to compare
+ * @param title - Optional title for the comparison section
+ */
+export function printThreeWayComparisonResults(
+  results: AggregatedBenchmarkResults[],
+  title = "COMPARISON"
+): void {
+  cli.header(title);
+
+  if (results.length < 2) {
+    cli.warn("Need at least 2 approaches to compare");
+    return;
+  }
+
+  const headers = [
+    chalk.bold.white("Metric"),
+    ...results.map((r) => chalk.bold.white(r.approach)),
+  ];
+
+  const table = new Table({
+    head: headers,
+    style: { head: [], border: ["cyan"] },
+  });
+
+  // Find the baseline (first result) for percentage calculations
+  const baseline = results[0];
+
+  const formatValue = (value: number, format: "number" | "cost" | "ms" | "turns" | "percent") => {
+    switch (format) {
+      case "number":
+        return formatNumber(Math.round(value));
+      case "cost":
+        return `$${value.toFixed(4)}`;
+      case "ms":
+        return `${formatNumber(Math.round(value))}ms`;
+      case "turns":
+        return value.toFixed(1);
+      case "percent":
+        return `${(value * 100).toFixed(0)}%`;
+    }
+  };
+
+  const formatDiffFromBaseline = (
+    baselineVal: number,
+    currentVal: number,
+    isLowerBetter = true
+  ): string => {
+    const diff = baselineVal - currentVal;
+    const pct = baselineVal > 0 ? ((diff / baselineVal) * 100).toFixed(1) : "0.0";
+    const arrow = diff > 0 ? "↓" : diff < 0 ? "↑" : "=";
+    const color = (isLowerBetter ? diff > 0 : diff < 0) ? chalk.green : diff === 0 ? chalk.white : chalk.red;
+    return color(`${arrow}${Math.abs(parseFloat(pct))}%`);
+  };
+
+  const addRow = (
+    label: string,
+    getValue: (r: AggregatedBenchmarkResults) => number,
+    format: "number" | "cost" | "ms" | "turns" | "percent",
+    isLowerBetter = true
+  ) => {
+    const row = [label];
+    const baselineVal = getValue(baseline);
+    for (let i = 0; i < results.length; i++) {
+      const val = getValue(results[i]);
+      const formatted = formatValue(val, format);
+      if (i === 0) {
+        row.push(formatted);
+      } else {
+        const diff = formatDiffFromBaseline(baselineVal, val, isLowerBetter);
+        row.push(`${formatted} ${diff}`);
+      }
+    }
+    table.push(row);
+  };
+
+  addRow("Input tokens", (r) => r.avgInputTokens, "number");
+  addRow("Output tokens", (r) => r.avgOutputTokens, "number");
+  addRow("Image tokens", (r) => r.avgImageTokens, "number");
+  addRow(chalk.bold("Total cost"), (r) => r.avgTotalCostUsd, "cost");
+  addRow("Duration", (r) => r.avgDurationMs, "ms");
+  addRow("Turns", (r) => r.avgNumTurns, "turns");
+  addRow("Success rate", (r) => r.successRate, "percent", false);
+
+  console.log(table.toString());
+
+  // Print summary of improvements vs baseline
+  console.log();
+  const baselineCost = baseline.avgTotalCostUsd;
+  const baselineTokens = baseline.avgInputTokens;
+
+  for (let i = 1; i < results.length; i++) {
+    const r = results[i];
+    const tokenReduction = ((baselineTokens - r.avgInputTokens) / baselineTokens) * 100;
+    const costReduction = ((baselineCost - r.avgTotalCostUsd) / baselineCost) * 100;
+
+    if (tokenReduction > 0 || costReduction > 0) {
+      console.log(chalk.bold.cyan(`  ${r.approach} vs ${baseline.approach}:`));
+      if (tokenReduction > 0) {
+        console.log(chalk.green(`    ✓ Token reduction: ${tokenReduction.toFixed(1)}%`));
+      }
+      if (costReduction > 0) {
+        console.log(chalk.green(`    ✓ Cost reduction: ${costReduction.toFixed(1)}%`));
+      }
+    }
+  }
+}
+
+/**
+ * Prints detailed cost analysis for multiple approaches (Agent SDK version).
+ *
+ * @param results - Array of aggregated results to analyze
+ */
+export function printThreeWayCostAnalysis(
+  results: AggregatedBenchmarkResults[]
+): void {
+  cli.section("COST ANALYSIS");
+
+  if (results.length === 0) return;
+
+  const baseline = results[0];
+
+  console.log(chalk.gray("  Per task average:"));
+  for (const r of results) {
+    const label = r.approach.padEnd(20);
+    console.log(
+      chalk.gray(`    ${label}: `) +
+        chalk.white(`$${r.avgTotalCostUsd.toFixed(6)}`)
+    );
+  }
+
+  // Show savings vs baseline for each approach
+  console.log();
+  console.log(chalk.gray("  Savings vs baseline:"));
+  for (let i = 1; i < results.length; i++) {
+    const r = results[i];
+    const savings = baseline.avgTotalCostUsd - r.avgTotalCostUsd;
+    const savingsPct =
+      baseline.avgTotalCostUsd > 0
+        ? ((savings / baseline.avgTotalCostUsd) * 100).toFixed(1)
+        : "0.0";
+    const label = r.approach.padEnd(20);
+    const color = savings > 0 ? chalk.green : savings < 0 ? chalk.red : chalk.white;
+    console.log(
+      chalk.gray(`    ${label}: `) +
+        color(`$${savings.toFixed(6)} (${savings > 0 ? "" : "+"}${savingsPct}%)`)
+    );
+  }
+
+  console.log();
+  console.log(chalk.gray("  Extrapolated to 100 tasks:"));
+  for (const r of results) {
+    const label = r.approach.padEnd(20);
+    console.log(
+      chalk.gray(`    ${label}: `) +
+        chalk.white(`$${(r.avgTotalCostUsd * 100).toFixed(4)}`)
+    );
+  }
+
+  console.log();
+  console.log(chalk.gray("  Extrapolated to 1,000 tasks:"));
+  for (const r of results) {
+    const label = r.approach.padEnd(20);
+    console.log(
+      chalk.gray(`    ${label}: `) +
+        chalk.white(`$${(r.avgTotalCostUsd * 1000).toFixed(2)}`)
+    );
+  }
+  console.log();
+}
