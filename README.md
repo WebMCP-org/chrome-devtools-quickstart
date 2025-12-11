@@ -1,9 +1,7 @@
 # Chrome DevTools MCP Quickstart
-
 > Give AI agents direct access to your website's functionality—no screenshots, no DOM scraping, just structured tool calls.
 
 ## Why This Matters
-
 **Up to 89% fewer tokens** compared to screenshot-based workflows.
 
 ![Benchmark Comparison](./assets/benchmark.png)
@@ -121,12 +119,16 @@ The AI will navigate to your page, discover the tools, and execute them:
 [WebMCP](https://github.com/MiguelsPizza/WebMCP) takes this further: instead of AI parsing screenshots or scraping DOM, your website exposes JavaScript functions as structured tools that AI can call directly. The result is faster, cheaper, and more reliable agent interactions.
 
 > [!NOTE]
-> **What is WebMCP?**
+> **What is WebMCP?**   
+> <img width="500" alt="WebMCP-diagram" src="https://github.com/user-attachments/assets/82041b87-b464-4c29-8219-cb765429286d" />    
 > WebMCP turns your website's JavaScript functions into AI-callable tools. Register a function once, and any MCP-compatible AI client can discover and invoke it—with type-safe parameters and structured responses. The protocol is being [standardized through the W3C Web Machine Learning Community Group](https://github.com/webmachinelearning/webmcp).
 
 > [!NOTE]
 > **Try it live:** Explore the [Playground](https://meetchar.ai) to see WebMCP in action.
 > Questions? Reach out: [MiguelsPizza](https://github.com/MiguelsPizza) & [Zkitty](https://x.com/n0rizkitty)
+ 
+[![Join Our Discord](https://img.shields.io/badge/Join%20Our%20Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/a9fBR6Bw)
+
 
 ---
 
