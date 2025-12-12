@@ -108,7 +108,7 @@ Ask your AI:
 
 The AI will navigate to your page, discover the tools, and execute them:
 
-![Demo After](./assets/demo-result.png)
+![webmcp-Chrome-CDP-tutorial](https://github.com/user-attachments/assets/7c380e7b-08af-44bd-a51d-93b4524a6af6)
 
 ---
 
